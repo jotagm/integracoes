@@ -1,0 +1,3 @@
+# Go espera LF. Sem isto, o Git no Windows pode gravar CRLF e o gofmt acusa o arquivo inteiro.
+* text=auto eol=lf
+*.go text eol=lf

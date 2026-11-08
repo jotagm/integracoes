@@ -27,5 +27,5 @@ make proto    # buf lint + buf generate (precisa do buf)
 ## Status
 
 - [x] Dia 1: esqueleto, `Atividade`, normalização do GitHub com testes, contrato gRPC, CI
-- [ ] Dia 2: cliente do GitHub (ETag/304, `X-Poll-Interval`, 429)
+- [x] Dia 2: cliente do GitHub (ETag/304, `X-Poll-Interval`, 429/403 de limite, erros transitórios e permanentes)
 - [ ] Dia 3: cliente do Spotify (refresh token, cursor, lacuna)
