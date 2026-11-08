@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package integracoes.leitura.v1;
+
+option go_package = "github.com/jotagm/integracoes/gen/integracoes/leitura/v1;leiturav1";
+
+// LeituraService recebe o push do projetor (lab) no lado público.
+// O lab sempre liga para cá; o lado público nunca chama o lab.
+service LeituraService {
+  // AplicarEventos aplica um lote em ordem de seq dentro de cada fonte.
+  // Idempotente: eventos com seq <= ultimo_seq daquela fonte são ignorados.
+  rpc AplicarEventos(AplicarEventosRequest) returns (AplicarEventosResponse);
+
+  // Reiniciar limpa os modelos de leitura antes de um replay.
+  rpc Reiniciar(ReiniciarRequest) returns (ReiniciarResponse);
+}
+
+message Evento {
+  int64 seq = 1;
+  string fonte = 2;
+  string tipo = 3;
+  // RFC 3339, em UTC.
+  string quando = 4;
+  // JSON do campo dados da Atividade.
+  bytes dados = 5;
+}
+
+message AplicarEventosRequest {
+  repeated Evento eventos = 1;
+}
+
+message AplicarEventosResponse {
+  // Maior seq aplicado por fonte. O projetor só faz commit do offset no Kafka depois disso.
+  map<string, int64> ultimo_seq_por_fonte = 1;
+}
+
+message ReiniciarRequest {
+  string motivo = 1;
+}
+
+message ReiniciarResponse {}

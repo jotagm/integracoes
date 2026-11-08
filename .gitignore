@@ -1,0 +1,12 @@
+# binários e artefatos
+/bin/
+/integracoes
+cobertura.out
+
+# segredos do lab (tokens do Spotify, GitHub e do gRPC)
+.env
+*.env.local
+
+# editores
+.idea/
+.vscode/
