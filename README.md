@@ -28,4 +28,4 @@ make proto    # buf lint + buf generate (precisa do buf)
 
 - [x] Dia 1: esqueleto, `Atividade`, normalização do GitHub com testes, contrato gRPC, CI
 - [x] Dia 2: cliente do GitHub (ETag/304, `X-Poll-Interval`, 429/403 de limite, erros transitórios e permanentes)
-- [ ] Dia 3: cliente do Spotify (refresh token, cursor, lacuna)
+- [x] Dia 3: fonte do Spotify (refresh token com cache e rotação, cursor `after`, retry em 401, lacuna)
