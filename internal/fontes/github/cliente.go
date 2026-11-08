@@ -2,13 +2,14 @@ package github
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/jotagm/integracoes/internal/fonte"
 )
 
 const (
@@ -45,27 +46,23 @@ type Resultado struct {
 	IntervaloPoll time.Duration
 }
 
-// ErrLimite indica que o GitHub pediu para esperar antes de tentar de novo.
-type ErrLimite struct {
-	RetryAfter time.Duration
-}
-
-func (e *ErrLimite) Error() string {
-	return fmt.Sprintf("github: limite atingido, tentar após %s", e.RetryAfter)
-}
-
-// Classes de erro que o ingestor usa para decidir o que fazer.
-// Verifique com errors.Is: o erro devolvido embrulha uma delas.
+// As classes de erro vêm do contrato comum (pacote fonte). Os aliases mantêm
+// os nomes locais: errors.Is(err, github.ErrTransitorio) e
+// errors.Is(err, fonte.ErrTransitorio) são a mesma verificação.
 var (
 	// ErrTransitorio: vale tentar de novo com backoff (5xx, falha de rede).
-	ErrTransitorio = errors.New("github: erro transitório")
+	ErrTransitorio = fonte.ErrTransitorio
 	// ErrPermanente: tentar de novo não resolve (401, 404, corpo grande demais).
-	ErrPermanente = errors.New("github: erro permanente")
+	ErrPermanente = fonte.ErrPermanente
 )
+
+// ErrLimite indica que o GitHub pediu para esperar antes de tentar de novo.
+type ErrLimite = fonte.ErrLimite
 
 // EventosPublicos faz um poll. etagAnterior vazio significa primeiro poll.
 func (c *Cliente) EventosPublicos(ctx context.Context, usuario, etagAnterior string) (Resultado, error) {
-	endereco := c.urlBase + "/users/" + url.PathEscape(usuario) + "/events/public"
+	// per_page=100 é o máximo: com o padrão de 30, um dia movimentado perderia eventos entre polls.
+	endereco := c.urlBase + "/users/" + url.PathEscape(usuario) + "/events/public?per_page=100"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endereco, nil)
 	if err != nil {
 		return Resultado{}, fmt.Errorf("github: montar requisição: %w", err)

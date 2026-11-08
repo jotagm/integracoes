@@ -29,6 +29,9 @@ func TestPrimeiroPoll(t *testing.T) {
 		if r.URL.Path != "/users/jotagm/events/public" {
 			t.Errorf("caminho errado: %s", r.URL.Path)
 		}
+		if got := r.URL.Query().Get("per_page"); got != "100" {
+			t.Errorf("per_page: esperava 100, veio %q", got)
+		}
 		obrigatorios := map[string]string{
 			"Accept":               "application/vnd.github+json",
 			"X-GitHub-Api-Version": "2022-11-28",

@@ -1,0 +1,26 @@
+# Lado de escrita, no lab. Por enquanto só o Postgres do event store;
+# o Kafka entra no dia 5 e os containers do binário no deploy.
+#
+#   docker compose -f deploy/lab/docker-compose.yml --env-file .env up -d
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: integracoes
+      POSTGRES_USER: integracoes
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+    # 5433 para não brigar com outro Postgres que já esteja no lab.
+    # Só escuta no próprio lab: ninguém de fora alcança o event store.
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - eventstore:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U integracoes -d integracoes"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  eventstore:

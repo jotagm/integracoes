@@ -110,7 +110,7 @@ func (t *Tokens) renovar(ctx context.Context) error {
 		}
 		return fmt.Errorf("%w: renovação: %w", ErrTransitorio, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	switch {
 	case resp.StatusCode == http.StatusOK:

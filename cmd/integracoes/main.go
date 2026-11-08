@@ -18,7 +18,7 @@ var subcomandos = map[string]struct {
 	descricao string
 	rodar     func(ctx context.Context, args []string) error
 }{
-	"ingestor": {"coleta as fontes e grava no event store (dias 2 a 4)", naoImplementado},
+	"ingestor": {"coleta as fontes e grava no event store", rodarIngestor},
 	"relay":    {"publica a outbox no Kafka (dia 5)", naoImplementado},
 	"projetor": {"consome o Kafka e empurra para a leitura (dias 6 e 7)", naoImplementado},
 	"leitura":  {"servidor gRPC + API HTTP pública (dias 7 e 8)", naoImplementado},

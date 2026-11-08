@@ -5,25 +5,15 @@
 // em vez de fingir que o histórico está completo.
 package spotify
 
-import (
-	"errors"
-	"fmt"
-	"time"
-)
+import "github.com/jotagm/integracoes/internal/fonte"
 
-// Mesmas classes de erro da fonte do GitHub, para o ingestor tratar as fontes igual.
+// Mesmas classes de erro do GitHub, vindas do contrato comum.
 var (
 	// ErrTransitorio: vale tentar de novo com backoff (5xx, falha de rede).
-	ErrTransitorio = errors.New("spotify: erro transitório")
+	ErrTransitorio = fonte.ErrTransitorio
 	// ErrPermanente: tentar de novo não resolve (refresh token revogado, 403, 404).
-	ErrPermanente = errors.New("spotify: erro permanente")
+	ErrPermanente = fonte.ErrPermanente
 )
 
 // ErrLimite indica que o Spotify respondeu 429 e pediu para esperar.
-type ErrLimite struct {
-	RetryAfter time.Duration
-}
-
-func (e *ErrLimite) Error() string {
-	return fmt.Sprintf("spotify: limite atingido, tentar após %s", e.RetryAfter)
-}
+type ErrLimite = fonte.ErrLimite

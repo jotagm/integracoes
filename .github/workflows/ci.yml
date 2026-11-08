@@ -16,7 +16,7 @@ jobs:
           go-version-file: go.mod
 
       - name: go vet
-        run: go vet ./...
+        run: go vet ./... && go vet -tags integracao ./...
 
       - name: testes (com detector de corrida)
         run: go test -race -coverprofile=cobertura.out ./...
@@ -27,6 +27,20 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           version: latest
+
+  # Postgres de verdade via testcontainers. Mais lento: só na main.
+  integracao:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: testes de integração
+        run: go test -race -tags integracao ./...
 
   proto:
     runs-on: ubuntu-latest
