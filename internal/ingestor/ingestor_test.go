@@ -88,7 +88,7 @@ func novoTeste(repo Repositorio) (*Ingestor, *[]time.Duration) {
 	var esperas []time.Duration
 	var mu sync.Mutex
 	i := Novo(repo, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	i.jitter = func(d time.Duration) time.Duration { return d } // sem sorte nos testes
+	i.backoff.Jitter = func(d time.Duration) time.Duration { return d } // sem sorte nos testes
 	i.esperar = func(ctx context.Context, d time.Duration) error {
 		mu.Lock()
 		defer mu.Unlock()
@@ -173,19 +173,6 @@ func TestBackoffDobraEZeraNoSucesso(t *testing.T) {
 	}
 }
 
-func TestBackoffTemTeto(t *testing.T) {
-	i, _ := novoTeste(novoRepo())
-	// 1s dobrando: a 9ª falha espera 2^8 s = 4m16s; a 10ª já passaria de 5 min e fica no teto.
-	if d := i.backoff(9); d != 256*time.Second {
-		t.Fatalf("9ª falha: esperava 4m16s, veio %s", d)
-	}
-	for _, falhas := range []int{10, 11, 50, 1000} {
-		if d := i.backoff(falhas); d != i.backoffMax {
-			t.Fatalf("com %d falhas deveria ficar no teto %s, veio %s", falhas, i.backoffMax, d)
-		}
-	}
-}
-
 func TestErroDoBancoETratadoComoTransitorio(t *testing.T) {
 	repo := novoRepo()
 	repo.falharGravar = errors.New("conexão com o postgres caiu")
@@ -242,25 +229,5 @@ func TestCancelarEncerraOLaco(t *testing.T) {
 	case <-terminou:
 	case <-time.After(2 * time.Second):
 		t.Fatal("o laço não encerrou depois do cancelamento")
-	}
-}
-
-func TestMeioJitterFicaEntreMetadeEOTotal(t *testing.T) {
-	for range 1000 {
-		d := meioJitter(10 * time.Second)
-		if d < 5*time.Second || d > 10*time.Second {
-			t.Fatalf("fora da faixa: %s", d)
-		}
-	}
-}
-
-func TestEsperarRespeitaOContexto(t *testing.T) {
-	ctx, cancelar := context.WithCancel(context.Background())
-	cancelar()
-	if err := esperar(ctx, time.Hour); !errors.Is(err, context.Canceled) {
-		t.Fatalf("esperar com contexto cancelado deveria voltar na hora, veio %v", err)
-	}
-	if err := esperar(context.Background(), time.Millisecond); err != nil {
-		t.Fatal(err)
 	}
 }

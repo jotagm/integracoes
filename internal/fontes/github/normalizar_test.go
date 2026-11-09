@@ -60,12 +60,15 @@ func TestNormalizar_Push(t *testing.T) {
 		nome        string
 		payload     string
 		querBranch  string
-		querCommits int
+		querCommits int // -1: o campo não deve aparecer
+		querHead    string
 	}{
-		{"size presente vence a lista", `{"ref":"refs/heads/main","size":5,"commits":[{}]}`, "main", 5},
-		{"sem size conta a lista", `{"ref":"refs/heads/feat/x","commits":[{},{}]}`, "feat/x", 2},
-		{"sem size e sem lista", `{"ref":"refs/heads/main"}`, "main", 0},
-		{"ref que não é branch fica como veio", `{"ref":"refs/tags/v1","size":1}`, "refs/tags/v1", 1},
+		{"size presente vence a lista", `{"ref":"refs/heads/main","size":5,"commits":[{}]}`, "main", 5, ""},
+		{"sem size conta a lista", `{"ref":"refs/heads/feat/x","commits":[{},{}]}`, "feat/x", 2, ""},
+		{"sem contagem omite commits", `{"ref":"refs/heads/main"}`, "main", -1, ""},
+		{"lista vazia sem size omite commits", `{"ref":"refs/heads/main","commits":[]}`, "main", -1, ""},
+		{"formato novo da Events API (out/2025)", `{"repository_id":1,"push_id":2,"ref":"refs/heads/main","head":"abc123","before":"def456"}`, "main", -1, "abc123"},
+		{"ref que não é branch fica como veio", `{"ref":"refs/tags/v1","size":1}`, "refs/tags/v1", 1, ""},
 	}
 
 	for _, c := range casos {
@@ -77,13 +80,18 @@ func TestNormalizar_Push(t *testing.T) {
 			}
 			var dados struct {
 				Branch  string `json:"branch"`
-				Commits int    `json:"commits"`
+				Commits *int   `json:"commits"`
+				Head    string `json:"head"`
 			}
 			if err := json.Unmarshal(a.Dados, &dados); err != nil {
 				t.Fatal(err)
 			}
-			if dados.Branch != c.querBranch || dados.Commits != c.querCommits {
-				t.Fatalf("esperava %s/%d, veio %s/%d", c.querBranch, c.querCommits, dados.Branch, dados.Commits)
+			commits := -1
+			if dados.Commits != nil {
+				commits = *dados.Commits
+			}
+			if dados.Branch != c.querBranch || commits != c.querCommits || dados.Head != c.querHead {
+				t.Fatalf("esperava %s/%d/%q, veio %s/%d/%q", c.querBranch, c.querCommits, c.querHead, dados.Branch, commits, dados.Head)
 			}
 		})
 	}

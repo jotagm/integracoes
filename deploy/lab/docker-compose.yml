@@ -1,5 +1,5 @@
-# Lado de escrita, no lab. Por enquanto só o Postgres do event store;
-# o Kafka entra no dia 5 e os containers do binário no deploy.
+# Lado de escrita, no lab: Postgres do event store e Kafka.
+# Os containers do binário (ingestor, relay, projetor) entram no deploy.
 #
 #   docker compose -f deploy/lab/docker-compose.yml --env-file .env up -d
 services:
@@ -22,5 +22,21 @@ services:
       timeout: 3s
       retries: 10
 
+  # Kafka em modo KRaft, um broker só. A imagem oficial já sobe configurada
+  # para um nó único anunciando localhost:9092.
+  kafka:
+    image: apache/kafka:3.9.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9092:9092"
+    volumes:
+      - kafka:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
 volumes:
   eventstore:
+  kafka:

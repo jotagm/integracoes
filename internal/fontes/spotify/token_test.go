@@ -58,7 +58,7 @@ func TestRenovacaoMandaOQueOSpotifyPede(t *testing.T) {
 		if r.PostForm.Get("grant_type") != "refresh_token" || r.PostForm.Get("refresh_token") != "refresh-1" {
 			t.Errorf("form: %v", r.PostForm)
 		}
-		fmt.Fprint(w, `{"access_token":"acesso-1","token_type":"Bearer","expires_in":3600}`)
+		_, _ = fmt.Fprint(w, `{"access_token":"acesso-1","token_type":"Bearer","expires_in":3600}`)
 	})
 
 	got, err := tk.Acesso(context.Background())
@@ -71,7 +71,7 @@ func TestTokenEmCacheAteQuaseVencer(t *testing.T) {
 	var renovacoes atomic.Int32
 	tk, rel := servidorToken(t, func(w http.ResponseWriter, r *http.Request) {
 		n := renovacoes.Add(1)
-		fmt.Fprintf(w, `{"access_token":"acesso-%d","expires_in":3600}`, n)
+		_, _ = fmt.Fprintf(w, `{"access_token":"acesso-%d","expires_in":3600}`, n)
 	})
 	ctx := context.Background()
 
@@ -93,7 +93,7 @@ func TestInvalidarForcaRenovacao(t *testing.T) {
 	var renovacoes atomic.Int32
 	tk, _ := servidorToken(t, func(w http.ResponseWriter, r *http.Request) {
 		n := renovacoes.Add(1)
-		fmt.Fprintf(w, `{"access_token":"acesso-%d","expires_in":3600}`, n)
+		_, _ = fmt.Fprintf(w, `{"access_token":"acesso-%d","expires_in":3600}`, n)
 	})
 	ctx := context.Background()
 
@@ -107,7 +107,7 @@ func TestInvalidarForcaRenovacao(t *testing.T) {
 
 func TestRefreshTokenRotacionado(t *testing.T) {
 	tk, _ := servidorToken(t, func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"access_token":"a","expires_in":3600,"refresh_token":"refresh-2"}`)
+		_, _ = fmt.Fprint(w, `{"access_token":"a","expires_in":3600,"refresh_token":"refresh-2"}`)
 	})
 	if _, err := tk.Acesso(context.Background()); err != nil {
 		t.Fatal(err)
@@ -122,7 +122,7 @@ func TestRenovacoesConcorrentesViramUma(t *testing.T) {
 	tk, _ := servidorToken(t, func(w http.ResponseWriter, r *http.Request) {
 		renovacoes.Add(1)
 		time.Sleep(20 * time.Millisecond) // segura a renovação para as goroutines se acumularem
-		fmt.Fprint(w, `{"access_token":"a","expires_in":3600}`)
+		_, _ = fmt.Fprint(w, `{"access_token":"a","expires_in":3600}`)
 	})
 
 	var wg sync.WaitGroup
@@ -158,7 +158,7 @@ func TestErrosDeRenovacao(t *testing.T) {
 		t.Run(c.nome, func(t *testing.T) {
 			tk, _ := servidorToken(t, func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(c.status)
-				fmt.Fprint(w, c.corpo)
+				_, _ = fmt.Fprint(w, c.corpo)
 			})
 			_, err := tk.Acesso(context.Background())
 			if !errors.Is(err, c.quer) {

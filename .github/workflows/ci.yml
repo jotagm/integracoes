@@ -24,7 +24,7 @@ jobs:
       - name: cobertura
         run: go tool cover -func=cobertura.out | tail -n 1
 
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v8
         with:
           version: latest
 

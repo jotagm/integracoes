@@ -16,6 +16,10 @@ internal/fontes/github/   adaptador do GitHub: cliente HTTP, normalização, Fon
 internal/fontes/spotify/  adaptador do Spotify: tokens, cliente, normalização com lacuna, Fonte
 internal/ingestor/        laço por fonte: intervalo, limite, backoff, parada em erro permanente
 internal/eventstore/      Postgres: evento (append-only), cursor_fonte, outbox, migrações goose
+internal/espera/          backoff exponencial com jitter e espera que respeita cancelamento
+internal/mensagem/        formato do evento no Kafka (contrato relay -> projetor)
+internal/relay/           laço outbox -> Kafka, at-least-once
+internal/kafka/           adaptador franz-go: produtor e criação de tópico
 deploy/lab/               docker compose do lado de escrita
 proto/                    contrato gRPC entre o lab e o lado público (buf)
 ```
@@ -24,8 +28,9 @@ proto/                    contrato gRPC entre o lab e o lado público (buf)
 
 ```bash
 cp .env.example .env   # e preencha
-make lab-up            # sobe o Postgres do lab
+make lab-up            # sobe o Postgres e o Kafka do lab
 make ingestor          # roda o ingestor com o .env
+go run ./cmd/integracoes relay   # outbox -> Kafka (com o .env carregado)
 
 make test     # go test -race ./...
 make test-integracao   # com Postgres de verdade (precisa do Docker)
@@ -40,4 +45,5 @@ make proto    # buf lint + buf generate (precisa do buf)
 - [x] Dia 2: cliente do GitHub (ETag/304, `X-Poll-Interval`, 429/403 de limite, erros transitórios e permanentes)
 - [x] Dia 3: fonte do Spotify (refresh token com cache e rotação, cursor `after`, retry em 401, lacuna)
 - [x] Dia 4: event store no Postgres (append-only, dedup, outbox, cursor numa transação) e ingestor com backoff
-- [ ] Dia 5: relay da outbox para o Kafka
+- [x] Dia 5: relay da outbox para o Kafka (lote travado com FOR UPDATE, at-least-once, ordem por fonte)
+- [ ] Dia 6: projetor

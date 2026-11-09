@@ -25,8 +25,13 @@ type repo struct {
 	Nome string `json:"name"`
 }
 
+// pushPayload aceita os dois formatos do PushEvent. Desde out/2025 a Events API
+// não manda mais size nem commits, só ref e os SHAs before/head; payloads antigos
+// (e o formato de webhook) ainda trazem a contagem.
 type pushPayload struct {
 	Ref     string            `json:"ref"`
+	Head    string            `json:"head"`
+	Antes   string            `json:"before"`
 	Size    *int              `json:"size"`
 	Commits []json.RawMessage `json:"commits"`
 }
@@ -92,16 +97,26 @@ func normalizar(e evento, coletadoEm time.Time) (atividade.Atividade, bool, erro
 		if err := json.Unmarshal(e.Payload, &p); err != nil {
 			return atividade.Atividade{}, false, fmt.Errorf("payload de push ilegível: %w", err)
 		}
-		commits := len(p.Commits)
-		if p.Size != nil {
-			commits = *p.Size
-		}
 		tipo = atividade.CommitEnviado
-		dados = map[string]any{
+		d := map[string]any{
 			"repositorio": e.Repo.Nome,
 			"branch":      strings.TrimPrefix(p.Ref, "refs/heads/"),
-			"commits":     commits,
 		}
+		// Sem contagem no payload, "commits" fica de fora: gravar 0 seria afirmar
+		// algo falso num event store que não aceita correção.
+		switch {
+		case p.Size != nil:
+			d["commits"] = *p.Size
+		case len(p.Commits) > 0:
+			d["commits"] = len(p.Commits)
+		}
+		if p.Head != "" {
+			d["head"] = p.Head
+		}
+		if p.Antes != "" {
+			d["antes"] = p.Antes
+		}
+		dados = d
 
 	case "CreateEvent":
 		var p createPayload

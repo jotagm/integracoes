@@ -13,11 +13,11 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"math/rand/v2"
 	"sync"
 	"time"
 
 	"github.com/jotagm/integracoes/internal/atividade"
+	"github.com/jotagm/integracoes/internal/espera"
 	"github.com/jotagm/integracoes/internal/fonte"
 )
 
@@ -31,25 +31,21 @@ type Repositorio interface {
 
 // Ingestor coordena as fontes.
 type Ingestor struct {
-	repo       Repositorio
-	log        *slog.Logger
-	backoffMin time.Duration
-	backoffMax time.Duration
+	repo    Repositorio
+	log     *slog.Logger
+	backoff espera.Backoff
 
-	// Injetáveis para o teste não dormir de verdade nem depender de sorte.
+	// Injetável para o teste não dormir de verdade.
 	esperar func(ctx context.Context, d time.Duration) error
-	jitter  func(d time.Duration) time.Duration
 }
 
 // Novo cria o ingestor com backoff de 1 s a 5 min.
 func Novo(repo Repositorio, log *slog.Logger) *Ingestor {
 	return &Ingestor{
-		repo:       repo,
-		log:        log,
-		backoffMin: time.Second,
-		backoffMax: 5 * time.Minute,
-		esperar:    esperar,
-		jitter:     meioJitter,
+		repo:    repo,
+		log:     log,
+		backoff: espera.Padrao(),
+		esperar: espera.Esperar,
 	}
 }
 
@@ -72,28 +68,28 @@ func (i *Ingestor) rodarFonte(ctx context.Context, f fonte.Fonte) {
 	falhas := 0
 
 	for {
-		espera, err := i.ciclo(ctx, f, log)
+		pausa, err := i.ciclo(ctx, f, log)
 
-		var limite *fonte.ErrLimite
+		var lim *fonte.ErrLimite
 		switch {
 		case err == nil:
 			falhas = 0
 		case ctx.Err() != nil:
 			log.Info("fonte encerrada")
 			return
-		case errors.As(err, &limite):
-			espera = limite.RetryAfter
-			log.Warn("limite da API, aguardando", "espera", espera.String())
+		case errors.As(err, &lim):
+			pausa = lim.RetryAfter
+			log.Warn("limite da API, aguardando", "espera", pausa.String())
 		case errors.Is(err, fonte.ErrPermanente):
 			log.Error("fonte parada: erro permanente, precisa de intervenção", "erro", err)
 			return
 		default:
 			falhas++
-			espera = i.backoff(falhas)
-			log.Warn("falha transitória, tentando de novo", "erro", err, "tentativa", falhas, "espera", espera.String())
+			pausa = i.backoff.Duracao(falhas)
+			log.Warn("falha transitória, tentando de novo", "erro", err, "tentativa", falhas, "espera", pausa.String())
 		}
 
-		if err := i.esperar(ctx, espera); err != nil {
+		if err := i.esperar(ctx, pausa); err != nil {
 			log.Info("fonte encerrada")
 			return
 		}
@@ -129,30 +125,4 @@ func (i *Ingestor) ciclo(ctx context.Context, f fonte.Fonte, log *slog.Logger) (
 		"descartes", coleta.Descartes,
 		"proximo_poll", coleta.ProximoPoll.String())
 	return coleta.ProximoPoll, nil
-}
-
-// backoff dobra a espera a cada falha seguida, até backoffMax, com jitter.
-func (i *Ingestor) backoff(falhas int) time.Duration {
-	d := i.backoffMin
-	for n := 1; n < falhas && d < i.backoffMax; n++ {
-		d *= 2
-	}
-	return i.jitter(min(d, i.backoffMax))
-}
-
-// meioJitter devolve um valor entre d/2 e d: espalha as tentativas sem nunca esperar quase zero.
-func meioJitter(d time.Duration) time.Duration {
-	metade := d / 2
-	return metade + rand.N(metade+1)
-}
-
-func esperar(ctx context.Context, d time.Duration) error {
-	t := time.NewTimer(d)
-	defer t.Stop()
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-t.C:
-		return nil
-	}
 }

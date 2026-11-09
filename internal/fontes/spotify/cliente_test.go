@@ -48,7 +48,7 @@ func TestPrimeiroPollSemCursor(t *testing.T) {
 		if got := r.Header.Get("Authorization"); got != "Bearer token-0" {
 			t.Errorf("authorization: %s", got)
 		}
-		fmt.Fprint(w, `{"items":[]}`)
+		_, _ = fmt.Fprint(w, `{"items":[]}`)
 	})
 	corpo, err := c.TocadasRecentemente(context.Background(), time.Time{})
 	if err != nil || string(corpo) != `{"items":[]}` {
@@ -62,7 +62,7 @@ func TestCursorViraAfterEmMilissegundos(t *testing.T) {
 		if got := r.URL.Query().Get("after"); got != fmt.Sprint(cursor.UnixMilli()) {
 			t.Errorf("after: veio %s", got)
 		}
-		fmt.Fprint(w, `{"items":[]}`)
+		_, _ = fmt.Fprint(w, `{"items":[]}`)
 	})
 	if _, err := c.TocadasRecentemente(context.Background(), cursor); err != nil {
 		t.Fatal(err)
@@ -78,7 +78,7 @@ func Test401RenovaETentaUmaVez(t *testing.T) {
 			w.WriteHeader(http.StatusUnauthorized) // o primeiro token foi revogado
 			return
 		}
-		fmt.Fprint(w, `{"items":[]}`)
+		_, _ = fmt.Fprint(w, `{"items":[]}`)
 	})
 
 	if _, err := c.TocadasRecentemente(context.Background(), time.Time{}); err != nil {
@@ -166,7 +166,7 @@ func TestErroDoTokenSobeSemChamarAAPI(t *testing.T) {
 
 func TestContextoCanceladoNaoETransitorioNoSpotify(t *testing.T) {
 	c := servidorAPI(t, &tokenFalso{}, func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"items":[]}`)
+		_, _ = fmt.Fprint(w, `{"items":[]}`)
 	})
 	ctx, cancelar := context.WithCancel(context.Background())
 	cancelar()
